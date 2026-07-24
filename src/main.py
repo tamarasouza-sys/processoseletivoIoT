@@ -43,7 +43,7 @@ while True:
             print("Alerta: Micro-parada detectada!")
             micro_parada_detectada = True
 
-        estado_botao = botao.value()
+    estado_botao = botao.value()
     agora = time.ticks_ms()
 
     if (
