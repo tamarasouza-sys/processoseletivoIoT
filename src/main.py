@@ -24,7 +24,7 @@ ultimo_tempo_botao = 0
 print("Contador de Producao Inicializado")
 while True:
     valor = ldr.read()
-
+    print("LDR =", valor)
     if valor < LIMIAR_BAIXO:
         if not peca_passando:
             peca_passando = True
