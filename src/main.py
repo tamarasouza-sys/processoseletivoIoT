@@ -2,8 +2,8 @@ from machine import Pin, ADC
 import time
 
 # Configuração
-LIMIAR_BAIXO = 100
-LIMIAR_ALTO = 500
+LIMIAR_BAIXO = 1000
+LIMIAR_ALTO = 2000
 TEMPO_MICRO_PARADA = 5000
 
 # Sensor LDR
@@ -24,19 +24,18 @@ ultimo_tempo_botao = 0
 print("Contador de Producao Inicializado")
 while True:
     valor = ldr.read()
-    print("LDR =", valor)
-    if valor < LIMIAR_BAIXO:
-        if not peca_passando:
-            peca_passando = True
-            inicio_bloqueio = time.ticks_ms()
+if valor > LIMIAR_ALTO:
+    if not peca_passando:
+        peca_passando = True
+        inicio_bloqueio = time.ticks_ms()
 
-    elif valor > LIMIAR_ALTO:
-        if peca_passando:
-            contador += 1
-            print("Peca detectada! Total:", contador)
-            peca_passando = False
-            inicio_bloqueio = None
-            micro_parada_detectada = False
+elif valor < LIMIAR_BAIXO:
+    if peca_passando:
+        contador += 1
+        print("Peca detectada! Total:", contador)
+        peca_passando = False
+        inicio_bloqueio = None
+        micro_parada_detectada = False
 
     if peca_passando and not micro_parada_detectada:
         if time.ticks_diff(time.ticks_ms(), inicio_bloqueio) >= TEMPO_MICRO_PARADA:
