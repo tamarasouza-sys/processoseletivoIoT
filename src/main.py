@@ -20,18 +20,20 @@ inicio_bloqueio = None
 micro_parada_detectada = False
 
 ultimo_estado_botao = 1
-ultimo_tempo_botao = 0
 
 print("Contador de Producao Inicializado")
 
 while True:
+    # Leitura do sensor
     valor = ldr.read()
 
+    # Detecta início da passagem da peça
     if valor > LIMIAR_ALTO:
         if not peca_passando:
             peca_passando = True
             inicio_bloqueio = time.ticks_ms()
 
+    # Detecta fim da passagem da peça
     elif valor < LIMIAR_BAIXO:
         if peca_passando:
             contador += 1
@@ -40,25 +42,22 @@ while True:
             inicio_bloqueio = None
             micro_parada_detectada = False
 
+    # Detecta micro-parada
     if peca_passando and not micro_parada_detectada:
         if time.ticks_diff(time.ticks_ms(), inicio_bloqueio) >= TEMPO_MICRO_PARADA:
             print("Alerta: Micro-parada detectada!")
             micro_parada_detectada = True
 
+    # Leitura do botão
     estado_botao = botao.value()
-    agora = time.ticks_ms()
 
-    if (
-        ultimo_estado_botao == 1
-        and estado_botao == 0
-        and time.ticks_diff(agora, ultimo_tempo_botao) > 200
-    ):
+    # Detecta borda de descida (botão pressionado)
+    if ultimo_estado_botao == 1 and estado_botao == 0:
         contador = 0
         peca_passando = False
         inicio_bloqueio = None
         micro_parada_detectada = False
         print("Turno resetado com sucesso. Contadores zerados.")
-        ultimo_tempo_botao = agora
 
     ultimo_estado_botao = estado_botao
 
