@@ -19,47 +19,68 @@ peca_passando = False
 inicio_bloqueio = None
 micro_parada_detectada = False
 
-ultimo_estado_botao = 1
+# Com PULL_UP:
+# 1 = botão solto
+# 0 = botão pressionado
+ultimo_estado_botao = botao.value()
 
 print("Contador de Producao Inicializado")
 
 while True:
-    # Leitura do sensor
+    # -------------------------
+    # SENSOR LDR
+    # -------------------------
+
     valor = ldr.read()
 
-    # Detecta início da passagem da peça
+    # Início da passagem/bloqueio
     if valor > LIMIAR_ALTO:
         if not peca_passando:
             peca_passando = True
             inicio_bloqueio = time.ticks_ms()
 
-    # Detecta fim da passagem da peça
+    # Fim da passagem
     elif valor < LIMIAR_BAIXO:
         if peca_passando:
             contador += 1
+
             print("Peca detectada! Total:", contador)
+
             peca_passando = False
             inicio_bloqueio = None
             micro_parada_detectada = False
 
-    # Detecta micro-parada
+    # -------------------------
+    # MICRO-PARADA
+    # -------------------------
+
     if peca_passando and not micro_parada_detectada:
-        if time.ticks_diff(time.ticks_ms(), inicio_bloqueio) >= TEMPO_MICRO_PARADA:
-            print("Alerta: Micro-parada detectada!")
+        if inicio_bloqueio is not None:
+            tempo_bloqueado = time.ticks_diff(
+                time.ticks_ms(),
+                inicio_bloqueio
+            )
 
-            micro_parada_detectada = True
+            if tempo_bloqueado >= TEMPO_MICRO_PARADA:
+                print("Alerta: Micro-parada detectada!")
+                micro_parada_detectada = True
 
-    # Leitura do botão
+    # -------------------------
+    # BOTÃO DE RESET
+    # -------------------------
+
     estado_botao = botao.value()
 
-    # Detecta o pressionamento do botão
-    if estado_botao == 0 and ultimo_estado_botao == 1:
+    # Detecta a LIBERAÇÃO do botão:
+    # estado anterior = 0 (pressionado)
+    # estado atual    = 1 (solto)
+    if ultimo_estado_botao == 0 and estado_botao == 1:
         contador = 0
         peca_passando = False
         inicio_bloqueio = None
         micro_parada_detectada = False
 
-        print("Turno resetado com sucesso. Contadores zerados.\r")
+        print("Turno resetado com sucesso. Contadores zerados.")
 
     ultimo_estado_botao = estado_botao
 
