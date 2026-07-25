@@ -51,18 +51,12 @@ while True:
     # Leitura do botão
     estado_botao = botao.value()
 
-    # DEBUG
-    print("Estado do botão:", estado_botao)
-
     # Detecta o pressionamento do botão
     if estado_botao == 0 and ultimo_estado_botao == 1:
-        print(">>> BOTÃO DETECTADO <<<")
-
         contador = 0
         peca_passando = False
         inicio_bloqueio = None
         micro_parada_detectada = False
-
         print("Turno resetado com sucesso. Contadores zerados.")
 
     ultimo_estado_botao = estado_botao
