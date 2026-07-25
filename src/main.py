@@ -46,6 +46,7 @@ while True:
     if peca_passando and not micro_parada_detectada:
         if time.ticks_diff(time.ticks_ms(), inicio_bloqueio) >= TEMPO_MICRO_PARADA:
             print("Alerta: Micro-parada detectada!")
+
             micro_parada_detectada = True
 
     # Leitura do botão
@@ -57,7 +58,8 @@ while True:
         peca_passando = False
         inicio_bloqueio = None
         micro_parada_detectada = False
-        print("Turno resetado com sucesso. Contadores zerados.")
+
+        print("Turno resetado com sucesso. Contadores zerados.\r")
 
     ultimo_estado_botao = estado_botao
 
