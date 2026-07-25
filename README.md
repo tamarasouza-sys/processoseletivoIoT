@@ -225,9 +225,9 @@ Após o envio das alterações para o repositório remoto, o workflow executa as
 
 Essa abordagem permite verificar automaticamente se as funcionalidades implementadas continuam compatíveis com os cenários definidos para o desafio.
 
-Durante o desenvolvimento ocorreram algumas execuções que não foram concluídas devido a problemas temporários de comunicação com a API de simulação.
+Durante o desenvolvimento ocorreram algumas execuções que não foram concluídas devido a falhas temporárias de comunicação com serviços externos utilizados pelo processo de integração contínua.
 
-Após a reexecução do workflow, os três cenários foram executados corretamente e a execução final foi concluída com sucesso.
+Após a reexecução do workflow, as etapas de construção e os três cenários de teste foram executados corretamente, e a execução final foi concluída com sucesso.
 
 ---
 
