@@ -9,208 +9,186 @@
 
 # Visão Geral da Solução
 
-Este projeto apresenta a implementação de um sistema embarcado para realizar a **contagem de peças em uma esteira**, utilizando um ESP32, um sensor LDR e um botão de reset.
+Este projeto apresenta a implementação de um sistema embarcado para realizar a contagem de peças em uma esteira utilizando um ESP32, um sensor LDR e um botão de reset.
 
-O funcionamento baseia-se na variação da luminosidade detectada pelo sensor. A passagem de uma peça provoca uma alteração no valor lido pelo LDR. O firmware identifica o início da passagem e, quando o sensor retorna ao estado correspondente à linha livre, registra uma nova peça produzida.
+O funcionamento baseia-se na variação da luminosidade detectada pelo sensor. Sempre que uma peça altera a luminosidade sobre o sensor e, em seguida, a condição retorna ao estado normal, o sistema registra uma nova peça produzida.
 
-Além da contagem de produção, foi implementada a **detecção de micro-paradas**. Caso o sensor permaneça no estado de bloqueio por cinco segundos, o sistema gera um alerta indicando uma possível parada da esteira.
+Também foi implementada a identificação de micro-paradas quando o sensor permanece na condição de detecção de peça por um período igual ou superior a cinco segundos.
 
-O sistema também possui um botão físico responsável pelo **reset do turno**, permitindo zerar o contador e os estados internos relacionados à passagem das peças e à detecção de micro-paradas.
+O botão de reset permite reiniciar o contador de produção e as variáveis relacionadas ao estado atual do sistema.
 
 ---
 
 # Arquitetura do Sistema Embarcado
 
-O firmware foi desenvolvido em **MicroPython** para execução em um **ESP32 DevKit C V4**.
+O firmware foi desenvolvido em MicroPython e utiliza um laço principal (`while True`) para executar continuamente as tarefas do sistema.
 
-A lógica principal é executada continuamente através de um laço:
+Durante a execução são realizadas as seguintes operações:
 
-```python
-while True:
-```
-
-Durante cada iteração, o sistema realiza:
-
-- leitura do sensor LDR;
-- identificação do início e do fim da passagem de uma peça;
+- leitura constante do sensor LDR;
+- identificação do início da passagem de uma peça;
+- identificação do fim da passagem da peça;
 - atualização do contador de produção;
-- monitoramento do tempo de bloqueio do sensor;
-- identificação de micro-paradas;
-- leitura do estado do botão de reset;
-- detecção da transição de liberação do botão;
-- atualização das variáveis de estado;
-- envio das mensagens necessárias pela interface serial.
+- monitoramento do tempo de permanência da peça sobre o sensor;
+- detecção de micro-paradas;
+- leitura do botão de reset;
+- reinicialização das variáveis do sistema quando o botão é acionado;
+- envio de mensagens de status para o monitor serial.
 
-A implementação utiliza variáveis de estado para evitar múltiplas contagens durante a passagem de uma única peça.
+A lógica foi estruturada em um único laço principal, permitindo que o ESP32 monitore continuamente o sensor e o botão.
 
 ---
 
 # Componentes Utilizados na Simulação
 
-A simulação foi desenvolvida no ambiente **Wokwi**, utilizando os seguintes componentes:
+Os componentes utilizados na simulação foram:
 
-- ESP32 DevKit C V4;
+- ESP32 DevKit V4;
 - Sensor fotoresistor (LDR);
 - Botão de pressão (Push Button);
 - Monitor Serial do Wokwi.
 
-No projeto, o sensor LDR é identificado como `ldr1` e sua saída analógica está conectada ao **GPIO 34** do ESP32.
+Cada componente possui uma função específica no sistema.
 
-O botão é identificado como `btn1` e está conectado ao **GPIO 18**, configurado no firmware utilizando `Pin.PULL_UP`.
+O ESP32 executa o firmware e processa as informações recebidas dos dispositivos de entrada.
 
-A interface serial é utilizada para apresentar as mensagens de inicialização, contagem de peças, micro-parada e reset do turno.
+O sensor LDR é utilizado para identificar a passagem das peças através da variação da luminosidade.
 
----
+O botão permite realizar o reset manual do contador de produção.
 
-# Lógica de Detecção de Peças
-
-Para interpretar os valores provenientes do LDR, foram definidos dois limiares:
-
-```python
-LIMIAR_BAIXO = 1200
-LIMIAR_ALTO = 1800
-```
-
-Quando a leitura ultrapassa o `LIMIAR_ALTO`, o firmware considera que ocorreu o início da condição correspondente à passagem ou bloqueio da peça e registra o instante utilizando `time.ticks_ms()`.
-
-Quando posteriormente a leitura fica abaixo do `LIMIAR_BAIXO`, o sistema considera que a passagem foi concluída e incrementa o contador.
-
-A mensagem enviada pela serial é:
-
-```text
-Peca detectada! Total: X
-```
-
-onde `X` representa o número acumulado de peças.
-
-A utilização de dois limiares distintos também cria uma faixa intermediária na qual o estado atual é mantido, evitando que pequenas variações próximas a um único valor de referência provoquem alterações sucessivas de estado.
-
----
-
-# Detecção de Micro-paradas
-
-O sistema monitora o período durante o qual permanece na condição de passagem ou bloqueio.
-
-O tempo limite utilizado é:
-
-```python
-TEMPO_MICRO_PARADA = 5000
-```
-
-correspondente a **5 segundos**.
-
-O instante inicial é armazenado utilizando:
-
-```python
-time.ticks_ms()
-```
-
-e o tempo decorrido é calculado com:
-
-```python
-time.ticks_diff()
-```
-
-Dessa forma, o controle é realizado sem utilizar uma espera de cinco segundos que interromperia a execução do programa.
-
-Quando o tempo de bloqueio atinge o limite estabelecido, o sistema envia:
-
-```text
-Alerta: Micro-parada detectada!
-```
-
-A variável `micro_parada_detectada` impede que o mesmo alerta seja emitido continuamente durante uma única ocorrência.
-
----
-
-# Reset Manual do Turno
-
-O botão de reset está conectado ao GPIO 18 e utiliza o resistor de **pull-up interno** do ESP32:
-
-```python
-botao = Pin(18, Pin.IN, Pin.PULL_UP)
-```
-
-Nessa configuração, o firmware acompanha o estado atual e o estado anterior do botão.
-
-A rotina de reset utilizada na versão final identifica a **liberação do botão**, correspondente à transição:
-
-```text
-0 -> 1
-```
-
-Quando essa transição é detectada, são reinicializadas as principais variáveis de controle:
-
-- contador de peças;
-- estado de passagem da peça;
-- instante inicial do bloqueio;
-- estado de detecção da micro-parada.
-
-Em seguida, o sistema envia pela serial:
-
-```text
-Turno resetado com sucesso. Contadores zerados.
-```
-
-Essa implementação ficou compatível com a sequência de acionamento utilizada pelo cenário automatizado do Wokwi CI.
+O monitor serial é utilizado para acompanhar as mensagens geradas pelo sistema durante a execução e também para permitir a validação dos cenários de teste.
 
 ---
 
 # Decisões Técnicas Relevantes
 
-Para tornar a implementação organizada, confiável e compatível com os requisitos do projeto, foram adotadas algumas estratégias durante o desenvolvimento:
+Para tornar a implementação organizada e compatível com os requisitos do desafio, foram adotadas algumas estratégias durante o desenvolvimento.
 
-- definição de constantes para os limiares do sensor e o tempo de micro-parada;
-- utilização de variáveis de estado para acompanhar a passagem das peças;
-- utilização de `time.ticks_ms()` e `time.ticks_diff()` para temporização não bloqueante da micro-parada;
-- acompanhamento do estado anterior e atual do botão para detectar sua transição;
-- utilização de dois limiares para distinguir os estados associados à passagem da peça;
-- manutenção das principais funcionalidades dentro de um único laço de execução;
-- utilização da saída serial para integração com os cenários automatizados.
+Foram definidos dois limites para a leitura do sensor:
+
+- `LIMIAR_BAIXO = 1200`;
+- `LIMIAR_ALTO = 1800`.
+
+A utilização de dois valores de referência permite distinguir os estados utilizados pela lógica de detecção da passagem das peças.
+
+Para controlar o estado da peça sobre o sensor foi utilizada a variável `peca_passando`.
+
+Quando a leitura do sensor ultrapassa o limite estabelecido para o início da detecção, o sistema registra que existe uma peça passando e armazena o instante em que essa condição começou.
+
+Quando a leitura retorna para a condição abaixo do limite inferior, o sistema considera que a passagem foi concluída e incrementa o contador de produção.
+
+Para o controle de tempo foram utilizadas as funções:
+
+- `time.ticks_ms()`;
+- `time.ticks_diff()`.
+
+Essas funções permitem calcular durante quanto tempo o sensor permanece na condição de detecção.
+
+O tempo definido para caracterizar uma micro-parada foi:
+
+`TEMPO_MICRO_PARADA = 5000`
+
+Portanto, caso a condição permaneça ativa por cinco segundos, o sistema gera a mensagem de alerta de micro-parada.
+
+Também foi implementada a leitura do botão de reset, permitindo reiniciar o contador e as variáveis relacionadas ao estado atual do sistema.
 
 ---
 
-# Validação Automatizada
+# Funcionamento da Contagem de Peças
 
-A solução foi validada através do **Wokwi CI integrado ao GitHub Actions**.
+O sistema realiza continuamente a leitura analógica do sensor LDR através do ADC do ESP32.
 
-Foram executados três cenários automatizados para verificar as principais funcionalidades do sistema.
+Quando o valor lido ultrapassa o `LIMIAR_ALTO`, o sistema considera que uma peça começou a passar pelo ponto de detecção.
 
-## Cenário 1 - Contagem Normal de Peças
+Nesse momento:
 
-O cenário altera a condição do LDR simulando a passagem de uma peça pela esteira.
+- `peca_passando` recebe o valor `True`;
+- o instante inicial é armazenado utilizando `time.ticks_ms()`.
 
-O sistema identifica a passagem e apresenta:
+Quando o valor do sensor posteriormente fica abaixo do `LIMIAR_BAIXO`, o sistema identifica que a passagem da peça foi concluída.
 
-```text
-Peca detectada! Total: 1
-```
+O contador é então incrementado e uma mensagem é enviada ao monitor serial informando o total de peças detectadas.
 
-**Resultado: aprovado.**
+Exemplo:
 
-## Cenário 2 - Detecção de Micro-parada
+`Peca detectada! Total: 1`
 
-O sensor permanece na condição de bloqueio por aproximadamente cinco segundos.
+---
 
-O firmware identifica a permanência excessiva nessa condição e apresenta:
+# Detecção de Micro-parada
 
-```text
-Alerta: Micro-parada detectada!
-```
+Além da contagem das peças, o sistema monitora durante quanto tempo uma peça permanece na região do sensor.
 
-**Resultado: aprovado.**
+Quando uma peça é detectada, o instante inicial da detecção é armazenado.
 
-## Cenário 3 - Reset Manual de Turno
+Durante as próximas execuções do laço principal, o programa compara o tempo atual com o instante inicial utilizando `time.ticks_diff()`.
 
-O cenário automatizado simula o acionamento e a liberação do botão `btn1`.
+Se o tempo atingir cinco segundos sem que a condição de passagem seja finalizada, o sistema considera que ocorreu uma micro-parada.
 
-Após detectar a transição de liberação, o sistema reinicializa as variáveis correspondentes ao turno e apresenta:
+Nesse caso, a seguinte mensagem é enviada ao monitor serial:
 
-```text
-Turno resetado com sucesso. Contadores zerados.
-```
+`Alerta: Micro-parada detectada!`
 
-**Resultado: aprovado.**
+A variável `micro_parada_detectada` impede que a mesma micro-parada gere repetidamente a mensagem de alerta.
+
+---
+
+# Reset Manual do Turno
+
+O sistema também possui um botão conectado ao ESP32 para realizar o reset manual do turno.
+
+Quando o acionamento do botão é detectado, o sistema reinicia as principais variáveis utilizadas durante o funcionamento:
+
+- contador de peças;
+- estado de passagem da peça;
+- instante inicial do bloqueio;
+- estado de detecção de micro-parada.
+
+Após o reset, o sistema pode continuar normalmente a contagem das próximas peças.
+
+O funcionamento do botão também foi validado através de um cenário automatizado no Wokwi.
+
+---
+
+# Testes Automatizados
+
+A validação da solução foi realizada através do GitHub Actions utilizando a integração com o Wokwi.
+
+Foram utilizados três cenários automatizados para verificar as principais funcionalidades implementadas.
+
+## Teste 1 — Contagem Normal de Peças
+
+O primeiro cenário verifica o funcionamento da contagem de produção.
+
+O teste simula uma alteração no sensor correspondente à passagem de uma peça e verifica se o sistema registra corretamente a contagem.
+
+A mensagem utilizada para validar o funcionamento é:
+
+`Peca detectada! Total: 1`
+
+O cenário foi executado com sucesso.
+
+## Teste 2 — Detecção de Micro-parada na Esteira
+
+O segundo cenário verifica a identificação de uma micro-parada.
+
+O sensor permanece na condição de detecção por tempo suficiente para atingir o limite de cinco segundos definido no firmware.
+
+Após esse período, o sistema deve gerar a mensagem:
+
+`Alerta: Micro-parada detectada!`
+
+O cenário foi executado com sucesso.
+
+## Teste 3 — Reset Manual de Turno
+
+O terceiro cenário verifica o funcionamento do botão de reset.
+
+Durante o teste, o botão é acionado através do cenário de simulação do Wokwi.
+
+O sistema detecta o acionamento e reinicia os dados relacionados ao turno.
+
+O cenário foi executado com sucesso.
 
 ---
 
@@ -221,27 +199,46 @@ Ao final do desenvolvimento, o sistema apresentou o comportamento esperado para 
 Foram implementadas e validadas as seguintes funcionalidades:
 
 - inicialização correta do sistema;
-- leitura do sensor LDR;
-- identificação da passagem das peças;
-- contagem automática da produção;
-- identificação de micro-paradas após cinco segundos de bloqueio;
-- reset manual do turno através do botão;
-- comunicação através da interface serial;
-- integração com os cenários de teste do Wokwi CI;
-- execução automatizada dos testes através do GitHub Actions.
+- contagem automática das peças detectadas pelo sensor LDR;
+- identificação de micro-paradas quando a condição de detecção permanece ativa por cinco segundos;
+- reinicialização do contador e das variáveis de estado através do botão de reset;
+- comunicação das informações através do monitor serial;
+- compatibilidade com os cenários automatizados de validação.
 
-Os **três cenários de validação foram concluídos com sucesso** na versão final do projeto.
+A validação foi realizada através do GitHub Actions utilizando a integração com o Wokwi.
+
+Foram executados três cenários de teste:
+
+- `test_1` — Contagem normal de peças;
+- `test_2` — Detecção de micro-parada na esteira;
+- `test_3` — Reset manual de turno.
+
+Após a execução final do workflow, os três cenários foram concluídos com sucesso, validando o funcionamento da solução implementada.
+
+---
+
+# Integração Contínua
+
+O projeto utiliza GitHub Actions para realizar automaticamente a construção e os testes da solução.
+
+Após o envio das alterações para o repositório remoto, o workflow executa as etapas necessárias para preparar o projeto e iniciar os testes utilizando o Wokwi CLI.
+
+Essa abordagem permite verificar automaticamente se as funcionalidades implementadas continuam compatíveis com os cenários definidos para o desafio.
+
+Durante o desenvolvimento ocorreram algumas execuções que não foram concluídas devido a problemas temporários de comunicação com a API de simulação.
+
+Após a reexecução do workflow, os três cenários foram executados corretamente e a execução final foi concluída com sucesso.
 
 ---
 
 # Comentários Adicionais
 
-O desenvolvimento deste desafio permitiu aplicar conceitos relacionados a **sistemas embarcados, leitura de sensores analógicos, controle de estados e temporização não bloqueante utilizando MicroPython**.
+Este desafio contribuiu para reforçar conhecimentos em sistemas embarcados, programação em MicroPython e utilização da plataforma Wokwi para simulação de hardware.
 
-A utilização do Wokwi possibilitou simular o comportamento do hardware e validar diferentes condições de funcionamento do sistema.
+Além do desenvolvimento do firmware, também foi possível praticar o uso de Git, GitHub e GitHub Actions para versionamento de código, integração contínua e execução automatizada dos testes.
 
-O projeto também envolveu o uso de **Git e GitHub para versionamento de código**, além do **GitHub Actions integrado ao Wokwi CI para validação automatizada**, permitindo verificar o comportamento do firmware após as atualizações realizadas no repositório.
+Durante o desenvolvimento, foram realizados ajustes na leitura do sensor LDR, na detecção de micro-paradas e no tratamento do botão de reset. A execução dos cenários automatizados permitiu verificar o comportamento do sistema e realizar os ajustes necessários.
 
-Durante o desenvolvimento, os cenários automatizados também foram utilizados como ferramenta de diagnóstico. A análise das leituras do sensor permitiu ajustar os limiares utilizados pelo firmware, enquanto a validação do botão levou ao ajuste da detecção do evento de reset para a transição de liberação.
+Ao final, os três cenários de teste disponibilizados para o desafio LIGHT foram executados com sucesso no GitHub Actions.
 
-Ao final, foi obtida uma solução organizada, legível, compatível com os requisitos apresentados e **aprovada nos três cenários automatizados de validação**.
+A solução final foi mantida organizada, legível e compatível com os requisitos apresentados no desafio técnico.
