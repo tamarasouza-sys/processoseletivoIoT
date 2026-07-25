@@ -2,8 +2,8 @@ from machine import Pin, ADC
 import time
 
 # Configuração
-LIMIAR_BAIXO = 1000
-LIMIAR_ALTO = 2000
+LIMIAR_BAIXO = 1200
+LIMIAR_ALTO = 1800
 TEMPO_MICRO_PARADA = 5000
 
 # Sensor LDR
@@ -12,18 +12,21 @@ ldr.atten(ADC.ATTN_11DB)
 
 # Botão
 botao = Pin(18, Pin.IN, Pin.PULL_UP)
+
 # Variáveis
 contador = 0
 peca_passando = False
-
 inicio_bloqueio = None
 micro_parada_detectada = False
 
 ultimo_estado_botao = 1
 ultimo_tempo_botao = 0
+
 print("Contador de Producao Inicializado")
+
 while True:
     valor = ldr.read()
+    print("ADC:", valor, " Passando:", peca_passando)
 
     if valor > LIMIAR_ALTO:
         if not peca_passando:
