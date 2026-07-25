@@ -26,7 +26,6 @@ print("Contador de Producao Inicializado")
 
 while True:
     valor = ldr.read()
-    print("ADC:", valor, " Passando:", peca_passando)
 
     if valor > LIMIAR_ALTO:
         if not peca_passando:
